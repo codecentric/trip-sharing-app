@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trip — Prototype</title>
+<style>
+  :root {
+    --ground:  #FBFCFA;
+    --panel:   #FFFFFF;
+    --sunk:    #F1F3F0;
+    --ink:     #16202B;
+    --ink-soft:#47554E;
+    --ink-mute:#6B7770;
+    --rule:    #D7DED9;
+    --marker:  #C8332B;
+    --system:  #2F6E62;
+    --chip:    #ECEFEB;
+    --focus:   #C8332B;
+
+    --f-ui:   "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    --f-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+    --r: 3px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#111715; --panel:#182220; --sunk:#141C1A;
+      --ink:#E4E9E5; --ink-soft:#AFBCB5; --ink-mute:#8B9992;
+      --rule:#2A3533; --marker:#E9695F; --system:#6FB6A5; --chip:#232E2B;
+      --focus:#E9695F;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#111715; --panel:#182220; --sunk:#141C1A;
+    --ink:#E4E9E5; --ink-soft:#AFBCB5; --ink-mute:#8B9992;
+    --rule:#2A3533; --marker:#E9695F; --system:#6FB6A5; --chip:#232E2B;
+    --focus:#E9695F;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin:0; background:var(--ground); color:var(--ink);
+    font-family:var(--f-ui); font-size:15px; line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  button, input, select, textarea { font:inherit; color:inherit; }
+  :focus-visible { outline:2px solid var(--focus); outline-offset:2px; }
+
+  /* ---- chrome ---- */
+  .topbar {
+    position:sticky; top:0; z-index:5;
+    display:flex; align-items:center; gap:18px; flex-wrap:wrap;
+    padding:12px 22px; background:var(--panel);
+    border-bottom:1px solid var(--rule);
+  }
+  .brand { font-weight:700; letter-spacing:.02em; }
+  .brand small {
+    font-family:var(--f-mono); font-size:10px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--ink-mute); margin-left:9px; font-weight:400;
+  }
+  .spacer { flex:1 1 auto; }
+  .persona { display:flex; align-items:center; gap:8px; }
+  .persona span {
+    font-family:var(--f-mono); font-size:10px; letter-spacing:.13em;
+    text-transform:uppercase; color:var(--ink-mute);
+  }
+  .seg { display:flex; border:1px solid var(--rule); border-radius:var(--r); overflow:hidden; }
+  .seg button {
+    background:transparent; border:0; padding:6px 14px; cursor:pointer;
+    font-size:13px; color:var(--ink-soft);
+  }
+  .seg button[aria-pressed="true"] { background:var(--ink); color:var(--ground); }
+
+  .wrap {
+    max-width:1180px; margin:0 auto; padding:26px 22px 80px;
+    display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:26px; align-items:start;
+  }
+  @media (max-width:900px) { .wrap { grid-template-columns:minmax(0,1fr); } }
+
+  /* ---- generic ---- */
+  .card { background:var(--panel); border:1px solid var(--rule); border-radius:var(--r); }
+  .card + .card { margin-top:18px; }
+  .card > header {
+    padding:13px 18px; border-bottom:1px solid var(--rule);
+    display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;
+  }
+  .card > header h2 { margin:0; font-size:15px; letter-spacing:.01em; }
+  .card > .body { padding:18px; }
+  .card > .body.tight { padding:0; }
+
+  h1 { font-size:24px; margin:0 0 4px; letter-spacing:-.01em; }
+  .sub { color:var(--ink-mute); font-size:13.5px; margin:0 0 18px; }
+
+  .crumb {
+    background:none; border:0; padding:0; cursor:pointer;
+    font-family:var(--f-mono); font-size:11px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--ink-mute); margin-bottom:14px;
+  }
+  .crumb:hover { color:var(--ink); }
+
+  .btn {
+    background:var(--ink); color:var(--ground); border:1px solid var(--ink);
+    padding:8px 15px; border-radius:var(--r); cursor:pointer; font-size:14px;
+    display:inline-flex; align-items:center; gap:9px;
+  }
+  .btn.ghost { background:transparent; color:var(--ink); border-color:var(--rule); }
+  .btn.sys   { background:var(--system); border-color:var(--system); color:#fff; }
+  .btn:disabled { opacity:.4; cursor:not-allowed; }
+  .btn .s {
+    font-family:var(--f-mono); font-size:9.5px; letter-spacing:.08em;
+    opacity:.7; border:1px solid currentColor; border-radius:2px; padding:0 3px;
+  }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+
+  .badge {
+    font-family:var(--f-mono); font-size:10px; letter-spacing:.1em;
+    text-transform:uppercase; padding:3px 8px; border-radius:2px;
+    background:var(--chip); color:var(--ink-soft); white-space:nowrap;
+  }
+  .badge.on   { background:var(--marker); color:#fff; }
+  .badge.sysb { background:var(--system); color:#fff; }
+
+  .list { list-style:none; margin:0; padding:0; }
+  .list li { border-bottom:1px solid var(--rule); }
+  .list li:last-child { border-bottom:0; }
+  .item {
+    width:100%; text-align:left; background:none; border:0; cursor:pointer;
+    padding:14px 18px; display:flex; gap:14px; align-items:center;
+  }
+  .item:hover { background:var(--sunk); }
+  .item .grow { flex:1 1 auto; min-width:0; }
+  .item .t { font-weight:600; }
+  .item .m { color:var(--ink-mute); font-size:13px; }
+
+  .empty { padding:26px 18px; color:var(--ink-mute); font-size:14px; }
+
+  label.f { display:block; margin-bottom:14px; }
+  label.f > span {
+    display:block; font-family:var(--f-mono); font-size:10px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--ink-mute); margin-bottom:5px;
+  }
+  label.f input, label.f textarea, label.f select {
+    width:100%; padding:9px 11px; background:var(--ground);
+    border:1px solid var(--rule); border-radius:var(--r);
+  }
+  .req { color:var(--marker); }
+  .hint { font-family:var(--f-mono); font-size:10.5px; color:var(--ink-mute); margin-top:5px; }
+  .err { color:var(--marker); font-size:13px; margin:0 0 14px; }
+
+  .photos { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+  .photo {
+    width:38px; height:38px; border-radius:2px; border:1px solid var(--rule);
+    background:linear-gradient(150deg, hsl(var(--h) 42% 72%), hsl(var(--h) 38% 52%));
+  }
+  .cap { font-family:var(--f-mono); font-size:10.5px; color:var(--ink-mute); }
+  .cap.max { color:var(--marker); }
+
+  .cmt { border-top:1px solid var(--rule); padding:11px 0; }
+  .cmt:first-of-type { border-top:0; }
+  .cmt b { font-size:13px; }
+  .cmt .who { font-family:var(--f-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-mute); }
+
+  /* ---- side rail ---- */
+  .rail .card > .body { padding:14px 16px; }
+  .log { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:11px; }
+  .log li { display:flex; gap:9px; font-size:13px; line-height:1.4; }
+  .log .n {
+    font-family:var(--f-mono); font-size:10px; color:var(--system);
+    border:1px solid var(--system); border-radius:2px; padding:0 4px; height:16px; flex:0 0 auto;
+  }
+  .log .n.hum { color:var(--ink-mute); border-color:var(--rule); }
+  .trace { font-family:var(--f-mono); font-size:11px; color:var(--ink-mute); line-height:1.75; }
+  .trace b { color:var(--ink); font-weight:400; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">Trip<small>Prototype · Station 5</small></div>
+  <div class="spacer"></div>
+  <div class="persona">
+    <span>Acting as</span>
+    <div class="seg" id="roles">
+      <button data-role="Organizer">Organizer</button>
+      <button data-role="Friend">Friend</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <main id="app"></main>
+  <aside class="rail" id="rail"></aside>
+</div>
+
+<script>
+"use strict";
+
+/* ---------------------------------------------------------------
+   State. In memory only — no storage, no backend.
+   Vocabulary is the visual glossary's: Organizer, Friend, Trip,
+   Moment, Highlight Reel, Photo, Location.
+   --------------------------------------------------------------- */
+
+var uid = 0;
+function id() { uid += 1; return uid; }
+
+function photos(n) {
+  var a = [];
+  for (var i = 0; i < n; i++) a.push({ id: id(), h: (i * 37 + 190) % 360 });
+  return a;
+}
+
+var S = {
+  role: "Organizer",
+  view: { name: "trips" },
+  log: [],
+  trips: [
+    {
+      id: id(),
+      name: "Lisbon in April",
+      organizer: "Mara",
+      friend: "Jonas",
+      invitation: { status: "Accepted" },   // sentences 3 → 4 → 5 already run
+      moments: [
+        { id: id(), title: "Miradouro at sunset", location: "Miradouro da Graça, Lisbon",
+          photos: photos(25), highlighted: true, inReel: false,
+          comments: [{ by: "Friend", text: "This is the one I keep thinking about." }] },
+        { id: id(), title: "Pastéis, second breakfast", location: "Belém, Lisbon",
+          photos: photos(4), highlighted: false, inReel: false, comments: [] },
+        { id: id(), title: "The tram we missed", location: "Rua da Conceição, Lisbon",
+          photos: photos(0), highlighted: true, inReel: false, comments: [] }
+      ],
+      reel: null                              // 0..1 — none yet, sentence 10 available
+    },
+    {
+      id: id(),
+      name: "Faroe Islands",
+      organizer: "Mara",
+      friend: "Jonas",
+      invitation: { status: "Delivered" },    // sentence 5 still open
+      moments: [],                            // 0..n — legal empty
+      reel: null
+    }
+  ]
+};
+
+var MAX_PHOTOS = 25;   // glossary: Moment shows 0..25 Photo
+
+function note(sentence, actor, text) {
+  S.log.unshift({ s: sentence, actor: actor, text: text });
+}
+
+function trip(tid) {
+  for (var i = 0; i < S.trips.length; i++) if (S.trips[i].id === tid) return S.trips[i];
+  return null;
+}
+function moment(t, mid) {
+  for (var i = 0; i < t.moments.length; i++) if (t.moments[i].id === mid) return t.moments[i];
+  return null;
+}
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  });
+}
+
+/* Which Trips does the current role see?
+   Organizer owns 1..1 Trip; Friend participates only once the Trip Invitation is Accepted. */
+function visibleTrips() {
+  if (S.role === "Organizer") return S.trips;
+  return S.trips.filter(function (t) { return t.invitation.status === "Accepted"; });
+}
+
+/* --------------------------- views --------------------------- */
+
+function viewTrips() {
+  var ts = visibleTrips();
+  var pending = S.role === "Friend"
+    ? S.trips.filter(function (t) { return t.invitation.status === "Delivered"; })
+    : [];
+
+  var h = '<h1>Trip</h1><p class="sub">' +
+    (S.role === "Organizer"
+      ? "Trips you own. An Organizer owns exactly one Trip per Trip — start another to begin a new one."
+      : "Trips you participate in. A Trip appears here once you accept its Trip Invitation.") +
+    '</p>';
+
+  if (pending.length) {
+    h += '<div class="card"><header><h2>Trip Invitation</h2><span class="badge on">' +
+      pending.length + ' waiting</span></header><ul class="list">';
+    pending.forEach(function (t) {
+      h += '<li><div class="item"><div class="grow"><div class="t">' + esc(t.name) +
+        '</div><div class="m">Delivered by Trip Service · from Organizer ' + esc(t.organizer) +
+        '</div></div><button class="btn" data-act="accept" data-t="' + t.id +
+        '">Accept Trip Invitation<span class="s">5</span></button></div></li>';
+    });
+    h += '</ul></div>';
+  }
+
+  h += '<div class="card"><header><h2>Trips</h2><span class="badge">' + ts.length + '</span>';
+  if (S.role === "Organizer") {
+    h += '<div class="spacer"></div><button class="btn" data-act="go" data-v="start">Start Trip<span class="s">1</span></button>';
+  }
+  h += '</header>';
+
+  if (!ts.length) {
+    h += '<div class="empty">' + (S.role === "Organizer"
+      ? "No Trip yet. Start one."
+      : "No Trip yet. You will see one here after you accept a Trip Invitation.") + '</div>';
+  } else {
+    h += '<ul class="list">';
+    ts.forEach(function (t) {
+      h += '<li><button class="item" data-act="open" data-t="' + t.id + '">' +
+        '<div class="grow"><div class="t">' + esc(t.name) + '</div>' +
+        '<div class="m">' + t.moments.length + ' Moment' + (t.moments.length === 1 ? "" : "s") +
+        ' · Highlight Reel: ' + (t.reel ? "1" : "none") + '</div></div>' +
+        '<span class="badge' + (t.invitation.status === "Accepted" ? " on" : "") + '">' +
+        esc(t.invitation.status === "None" ? "Not invited" : t.invitation.status) + '</span></button></li>';
+    });
+    h += '</ul>';
+  }
+  return h + '</div>';
+}
+
+function viewStart(err) {
+  return '<button class="crumb" data-act="go" data-v="trips">← Trips</button>' +
+    '<h1>Start Trip</h1><p class="sub">Sentence 1 · Organizer starts Trip</p>' +
+    '<div class="card"><div class="body">' +
+    (err ? '<p class="err">' + esc(err) + '</p>' : '') +
+    '<label class="f"><span>Trip <b class="req">required</b></span>' +
+    '<input id="f-name" placeholder="Where did you go?"></label>' +
+    '<div class="row"><button class="btn" data-act="startTrip">Start Trip<span class="s">1</span></button>' +
+    '<button class="btn ghost" data-act="go" data-v="trips">Cancel</button></div>' +
+    '</div></div>';
+}
+
+function viewTrip(tid) {
+  var t = trip(tid);
+  if (!t) return viewTrips();
+  var isOrg = S.role === "Organizer";
+  var inv = t.invitation.status;
+  var highlighted = t.moments.filter(function (m) { return m.highlighted; });
+
+  var h = '<button class="crumb" data-act="go" data-v="trips">← Trips</button>' +
+    '<h1>' + esc(t.name) + '</h1>' +
+    '<p class="sub">Organizer ' + esc(t.organizer) +
+    (inv === "Accepted" ? " · Friend " + esc(t.friend) : "") +
+    ' · ' + t.moments.length + ' Moment' + (t.moments.length === 1 ? "" : "s") + '</p>';
+
+  /* --- Trip Invitation (1..1 Friend) --- */
+  h += '<div class="card"><header><h2>Trip Invitation</h2>' +
+    '<span class="badge' + (inv === "Accepted" ? " on" : "") + '">' +
+    esc(inv === "None" ? "Not sent" : inv) + '</span></header><div class="body">';
+  if (inv === "None") {
+    if (isOrg) {
+      h += '<label class="f"><span>Friend <b class="req">required</b></span>' +
+        '<input id="f-friend" value="' + esc(t.friend) + '" placeholder="Who was there with you?"></label>' +
+        '<p class="hint">A Trip has exactly one Friend (1..1). Sending is available once.</p>' +
+        '<button class="btn" data-act="invite" data-t="' + t.id +
+        '">Send Trip Invitation<span class="s">3</span></button>';
+    } else {
+      h += '<p class="cap">Not sent yet.</p>';
+    }
+  } else if (inv === "Sent") {
+    h += '<p class="cap">Sent. Waiting for Trip Service to deliver it.</p>';
+  } else if (inv === "Delivered") {
+    h += '<p class="cap">Delivered to Friend ' + esc(t.friend) + '. Not accepted yet.</p>';
+    if (!isOrg) {
+      h += '<div class="row" style="margin-top:12px"><button class="btn" data-act="accept" data-t="' +
+        t.id + '">Accept Trip Invitation<span class="s">5</span></button></div>';
+    }
+  } else {
+    h += '<p class="cap">Accepted by Friend ' + esc(t.friend) + '. Both may add Moments.</p>';
+  }
+  h += '</div></div>';
+
+  /* --- Moments (0..n) --- */
+  h += '<div class="card"><header><h2>Moments</h2><span class="badge">' + t.moments.length +
+    '</span><div class="spacer"></div>';
+  if (inv === "Accepted" || isOrg) {
+    h += '<button class="btn" data-act="go" data-v="addMoment" data-t="' + t.id +
+      '">Add Moment<span class="s">' + (isOrg ? "2" : "7") + '</span></button>';
+  }
+  h += '</header>';
+  if (!t.moments.length) {
+    h += '<div class="empty">No Moment yet. A Trip may hold none (0..n).</div>';
+  } else {
+    h += '<ul class="list">';
+    t.moments.forEach(function (m) {
+      h += '<li><button class="item" data-act="openM" data-t="' + t.id + '" data-m="' + m.id + '">' +
+        '<div class="grow"><div class="t">' + esc(m.title) + '</div>' +
+        '<div class="m">' + esc(m.location) + ' · ' + m.photos.length + ' Photo' +
+        (m.photos.length === 1 ? "" : "s") +
+        (m.comments.length ? " · " + m.comments.length + " comment" + (m.comments.length === 1 ? "" : "s") : "") +
+        '</div></div>' +
+        (m.highlighted ? '<span class="badge on">Highlighted</span>' : "") +
+        (m.inReel ? '<span class="badge sysb">In Reel</span>' : "") +
+        '</button></li>';
+    });
+    h += '</ul>';
+  }
+  h += '</div>';
+
+  /* --- Highlight Reel (0..1) --- */
+  h += '<div class="card"><header><h2>Highlight Reel</h2>' +
+    '<span class="badge' + (t.reel ? " sysb" : "") + '">' + (t.reel ? "Assembled" : "None") +
+    '</span></header><div class="body">';
+  if (t.reel) {
+    h += '<p class="cap" style="margin:0 0 12px">Assembled by Trip Service from ' +
+      t.reel.momentIds.length + ' highlighted Moment' + (t.reel.momentIds.length === 1 ? "" : "s") + '.</p>' +
+      '<button class="btn ghost" data-act="go" data-v="reel" data-t="' + t.id +
+      '">Relive Highlight Reel<span class="s">11</span></button>';
+    if (isOrg) h += '<p class="hint">A Trip has at most one Highlight Reel (0..1), so it cannot be assembled again.</p>';
+  } else if (isOrg) {
+    h += '<p class="cap" style="margin:0 0 12px">' + highlighted.length +
+      ' Moment' + (highlighted.length === 1 ? " is" : "s are") + ' highlighted.</p>' +
+      '<button class="btn sys" data-act="assemble" data-t="' + t.id + '"' +
+      (highlighted.length ? "" : " disabled") +
+      '>Trip Service assembles Highlight Reel<span class="s">10</span></button>' +
+      (highlighted.length ? "" : '<p class="hint">Highlight at least one Moment first (sentence 9).</p>');
+  } else {
+    h += '<p class="cap">Not assembled yet.</p>';
+  }
+  h += '</div></div>';
+
+  return h;
+}
+
+function viewAddMoment(tid, err) {
+  var t = trip(tid);
+  return '<button class="crumb" data-act="open" data-t="' + t.id + '">← ' + esc(t.name) + '</button>' +
+    '<h1>Add Moment</h1><p class="sub">Sentence ' + (S.role === "Organizer" ? "2 · Organizer" : "7 · Friend") +
+    ' adds Moment to Trip</p>' +
+    '<div class="card"><div class="body">' +
+    (err ? '<p class="err">' + esc(err) + '</p>' : '') +
+    '<label class="f"><span>Moment <b class="req">required</b></span>' +
+    '<input id="f-title" placeholder="What happened?"></label>' +
+    '<label class="f"><span>Location <b class="req">required</b></span>' +
+    '<input id="f-loc" placeholder="Where were you?">' +
+    '<p class="hint">A Moment is experienced at exactly one Location (1..1).</p></label>' +
+    '<label class="f"><span>Photo — how many</span>' +
+    '<input id="f-photos" type="number" min="0" max="25" value="0">' +
+    '<p class="hint">A Moment shows 0..25 Photos.</p></label>' +
+    '<div class="row"><button class="btn" data-act="addMoment" data-t="' + t.id +
+    '">Add Moment<span class="s">' + (S.role === "Organizer" ? "2" : "7") + '</span></button>' +
+    '<button class="btn ghost" data-act="open" data-t="' + t.id + '">Cancel</button></div>' +
+    '</div></div>';
+}
+
+function viewMoment(tid, mid) {
+  var t = trip(tid), m = moment(t, mid);
+  if (!m) return viewTrip(tid);
+  var isOrg = S.role === "Organizer";
+  var full = m.photos.length >= MAX_PHOTOS;
+
+  var h = '<button class="crumb" data-act="open" data-t="' + t.id + '">← ' + esc(t.name) + '</button>' +
+    '<h1>' + esc(m.title) + '</h1><p class="sub">Experienced at ' + esc(m.location) + '</p>';
+
+  h += '<div class="card"><header><h2>Photo</h2><span class="badge' + (full ? " on" : "") + '">' +
+    m.photos.length + ' / ' + MAX_PHOTOS + '</span></header><div class="body">';
+  if (m.photos.length) {
+    h += '<div class="photos">';
+    m.photos.forEach(function (p) { h += '<div class="photo" style="--h:' + p.h + '"></div>'; });
+    h += '</div>';
+  } else {
+    h += '<p class="cap" style="margin:0 0 12px">No Photo. A Moment may show none (0..25).</p>';
+  }
+  h += '<div class="row"><button class="btn ghost" data-act="addPhoto" data-t="' + t.id +
+    '" data-m="' + m.id + '"' + (full ? " disabled" : "") + '>Add Photo</button>' +
+    (full ? '<span class="cap max">Maximum reached — the glossary caps a Moment at 25 Photos.</span>' : '') +
+    '</div></div></div>';
+
+  h += '<div class="card"><header><h2>Highlight</h2>' +
+    (m.highlighted ? '<span class="badge on">Highlighted</span>' : '<span class="badge">Not highlighted</span>') +
+    (m.inReel ? '<span class="badge sysb">Part of Highlight Reel</span>' : '') +
+    '</header><div class="body">';
+  if (isOrg) {
+    h += '<button class="btn" data-act="highlight" data-t="' + t.id + '" data-m="' + m.id + '"' +
+      (m.inReel ? " disabled" : "") + '>' +
+      (m.highlighted ? "Remove highlight" : "Highlight Moment") + '<span class="s">9</span></button>' +
+      (m.inReel ? '<p class="hint">Already part of a Highlight Reel (0..1) — cannot be unhighlighted here.</p>' : '');
+  } else {
+    h += '<p class="cap">Only the Organizer highlights a Moment.</p>';
+  }
+  h += '</div></div>';
+
+  h += '<div class="card"><header><h2>Comments</h2><span class="badge">' + m.comments.length +
+    '</span></header><div class="body">';
+  if (m.comments.length) {
+    m.comments.forEach(function (c) {
+      h += '<div class="cmt"><div class="who">' + esc(c.by) + '</div><div>' + esc(c.text) + '</div></div>';
+    });
+  } else {
+    h += '<p class="cap" style="margin:0 0 14px">No comments yet.</p>';
+  }
+  h += '<label class="f" style="margin-top:14px"><span>Comment on Moment</span>' +
+    '<textarea id="f-cmt" rows="2" placeholder="Say something about this Moment"></textarea></label>' +
+    '<button class="btn" data-act="comment" data-t="' + t.id + '" data-m="' + m.id +
+    '">Comment on Moment<span class="s">8</span></button>' +
+    '<p class="hint">Comment has no entry in the visual glossary — see open questions.</p>' +
+    '</div></div>';
+
+  return h;
+}
+
+function viewReel(tid) {
+  var t = trip(tid);
+  if (!t.reel) return viewTrip(tid);
+  var ms = t.reel.momentIds.map(function (i) { return moment(t, i); }).filter(Boolean);
+
+  var h = '<button class="crumb" data-act="open" data-t="' + t.id + '">← ' + esc(t.name) + '</button>' +
+    '<h1>Highlight Reel</h1><p class="sub">Sentence 11 · Organizer relives Highlight Reel · assembled by Trip Service from ' +
+    ms.length + ' Moment' + (ms.length === 1 ? "" : "s") + '</p>';
+
+  ms.forEach(function (m) {
+    h += '<div class="card"><header><h2>' + esc(m.title) + '</h2>' +
+      '<span class="badge">' + esc(m.location) + '</span></header><div class="body">';
+    if (m.photos.length) {
+      h += '<div class="photos">';
+      m.photos.slice(0, 25).forEach(function (p) { h += '<div class="photo" style="--h:' + p.h + '"></div>'; });
+      h += '</div><p class="cap">' + m.photos.length + ' Photo' + (m.photos.length === 1 ? "" : "s") + '</p>';
+    } else {
+      h += '<p class="cap">No Photo.</p>';
+    }
+    h += '</div></div>';
+  });
+  return h;
+}
+
+/* --------------------------- rail --------------------------- */
+
+function rail() {
+  var h = '<div class="card"><header><h2>Trip Service</h2><span class="badge sysb">software actor</span></header>' +
+    '<div class="body">';
+  if (!S.log.length) {
+    h += '<p class="cap">Nothing yet. Actions you take are recorded here as story sentences.</p>';
+  } else {
+    h += '<ul class="log">';
+    S.log.slice(0, 12).forEach(function (e) {
+      h += '<li><span class="n' + (e.actor === "Trip Service" ? "" : " hum") + '">' + e.s +
+        '</span><span>' + esc(e.text) + '</span></li>';
+    });
+    h += '</ul>';
+  }
+  h += '</div></div>';
+
+  h += '<div class="card"><header><h2>The story</h2></header><div class="body"><div class="trace">' +
+    '<b>1</b> Organizer starts Trip<br>' +
+    '<b>2</b> Organizer adds Moment to Trip<br>' +
+    '<b>3</b> Organizer sends Trip Invitation<br>' +
+    '<b>4</b> Trip Service delivers Trip Invitation<br>' +
+    '<b>5</b> Friend accepts Trip Invitation<br>' +
+    '<b>6</b> Friend relives Trip<br>' +
+    '<b>7</b> Friend adds Moment to Trip<br>' +
+    '<b>8</b> Friend comments on Moment<br>' +
+    '<b>9</b> Organizer highlights Moment<br>' +
+    '<b>10</b> Trip Service assembles Highlight Reel<br>' +
+    '<b>11</b> Organizer relives Highlight Reel' +
+    '</div></div></div>';
+  return h;
+}
+
+/* --------------------------- actions --------------------------- */
+
+var pendingError = null;
+
+function act(a, el) {
+  var t = el.dataset.t ? trip(parseInt(el.dataset.t, 10)) : null;
+  var m = (t && el.dataset.m) ? moment(t, parseInt(el.dataset.m, 10)) : null;
+  pendingError = null;
+
+  if (a === "go")    { S.view = { name: el.dataset.v, t: t ? t.id : null }; }
+  if (a === "open")  { S.view = { name: "trip", t: t.id };
+                       if (S.role === "Friend") note(6, "Friend", "Friend relives Trip " + t.name + "."); }
+  if (a === "openM") { S.view = { name: "moment", t: t.id, m: m.id }; }
+
+  if (a === "startTrip") {
+    var name = (document.getElementById("f-name").value || "").trim();
+    if (!name) { pendingError = "A Trip needs a name."; }
+    else {
+      var nt = { id: id(), name: name, organizer: "Mara", friend: "Jonas",
+                 invitation: { status: "None" }, moments: [], reel: null };
+      S.trips.unshift(nt);
+      note(1, "Organizer", "Organizer starts Trip " + name + ".");
+      S.view = { name: "trip", t: nt.id };
+    }
+  }
+
+  if (a === "invite") {
+    var fr = (document.getElementById("f-friend").value || "").trim();
+    if (!fr) { pendingError = "A Trip Invitation needs exactly one Friend (1..1)."; }
+    else {
+      t.friend = fr;
+      t.invitation.status = "Sent";
+      note(3, "Organizer", "Organizer sends Trip Invitation to Friend " + fr + ".");
+      t.invitation.status = "Delivered";
+      note(4, "Trip Service", "Trip Service delivers Trip Invitation to Friend " + fr + ".");
+    }
+  }
+
+  if (a === "accept") {
+    t.invitation.status = "Accepted";
+    note(5, "Friend", "Friend accepts Trip Invitation for " + t.name + ".");
+    S.view = { name: "trip", t: t.id };
+  }
+
+  if (a === "addMoment") {
+    var ti = (document.getElementById("f-title").value || "").trim();
+    var lo = (document.getElementById("f-loc").value || "").trim();
+    var np = parseInt(document.getElementById("f-photos").value, 10);
+    if (isNaN(np)) np = 0;
+    if (!ti) pendingError = "A Moment needs a name.";
+    else if (!lo) pendingError = "A Moment is experienced at exactly one Location (1..1) — Location is required.";
+    else if (np < 0 || np > MAX_PHOTOS) pendingError = "A Moment shows 0..25 Photos.";
+    else {
+      t.moments.push({ id: id(), title: ti, location: lo, photos: photos(np),
+                       highlighted: false, inReel: false, comments: [] });
+      note(S.role === "Organizer" ? 2 : 7, S.role, S.role + " adds Moment " + ti + " to Trip " + t.name + ".");
+      S.view = { name: "trip", t: t.id };
+    }
+  }
+
+  if (a === "addPhoto") {
+    if (m.photos.length < MAX_PHOTOS) m.photos.push({ id: id(), h: (m.photos.length * 53 + 20) % 360 });
+  }
+
+  if (a === "highlight") {
+    m.highlighted = !m.highlighted;
+    if (m.highlighted) note(9, "Organizer", "Organizer highlights Moment " + m.title + ".");
+  }
+
+  if (a === "comment") {
+    var box = document.getElementById("f-cmt");
+    var txt = (box.value || "").trim();
+    if (txt) {
+      m.comments.push({ by: S.role, text: txt });
+      note(8, S.role, S.role + " comments on Moment " + m.title + ".");
+    }
+  }
+
+  if (a === "assemble") {
+    var hl = t.moments.filter(function (x) { return x.highlighted && !x.inReel; });
+    if (hl.length) {
+      t.reel = { id: id(), momentIds: hl.map(function (x) { return x.id; }) };
+      hl.forEach(function (x) { x.inReel = true; });
+      note(10, "Trip Service", "Trip Service assembles Highlight Reel from " + hl.length +
+        " highlighted Moment" + (hl.length === 1 ? "" : "s") + ".");
+    }
+  }
+
+  if (a === "reel") { S.view = { name: "reel", t: t.id }; }
+  if (el.dataset.v === "reel") { note(11, "Organizer", "Organizer relives Highlight Reel."); }
+
+  render();
+}
+
+/* --------------------------- render --------------------------- */
+
+function render() {
+  var v = S.view, h;
+  if (v.name === "trips")      h = viewTrips();
+  else if (v.name === "start") h = viewStart(pendingError);
+  else if (v.name === "trip")  h = viewTrip(v.t);
+  else if (v.name === "addMoment") h = viewAddMoment(v.t, pendingError);
+  else if (v.name === "moment")h = viewMoment(v.t, v.m);
+  else if (v.name === "reel")  h = viewReel(v.t);
+  else h = viewTrips();
+
+  document.getElementById("app").innerHTML = h;
+  document.getElementById("rail").innerHTML = rail();
+
+  var rb = document.querySelectorAll("#roles button");
+  for (var i = 0; i < rb.length; i++) {
+    rb[i].setAttribute("aria-pressed", rb[i].dataset.role === S.role ? "true" : "false");
+  }
+}
+
+document.getElementById("roles").addEventListener("click", function (e) {
+  var b = e.target.closest("button[data-role]");
+  if (!b) return;
+  S.role = b.dataset.role;
+  S.view = { name: "trips" };
+  pendingError = null;
+  render();
+});
+
+document.addEventListener("click", function (e) {
+  var b = e.target.closest("[data-act]");
+  if (!b || b.disabled) return;
+  act(b.dataset.act, b);
+});
+
+render();
+</script>
+</body>
+</html>
